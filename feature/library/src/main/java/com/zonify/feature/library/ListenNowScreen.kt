@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zonify.core.model.Track
 import com.zonify.core.ui.components.AudiophileBadge
+import com.zonify.core.ui.components.TrackArtworkImage
 import com.zonify.core.ui.theme.AppleMusicCardDark
 import com.zonify.core.ui.theme.AppleMusicDarkBackground
 import com.zonify.core.ui.theme.AppleMusicPink
@@ -62,7 +63,7 @@ fun ListenNowScreen(
         modifier = modifier
             .fillMaxSize()
             .background(AppleMusicDarkBackground),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         // Large Top Title
@@ -212,25 +213,14 @@ fun ListenNowScreen(
                                     .width(140.dp)
                                     .clickable { onTrackClick(track) }
                             ) {
-                                Card(
+                                TrackArtworkImage(
+                                    track = track,
                                     modifier = Modifier
                                         .size(140.dp)
                                         .aspectRatio(1f),
                                     shape = RoundedCornerShape(14.dp),
-                                    colors = CardDefaults.cardColors(containerColor = AppleMusicCardDark)
-                                ) {
-                                    Box(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = track.title.take(1),
-                                            color = Color.White.copy(alpha = 0.5f),
-                                            fontSize = 42.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                }
+                                    iconSize = 42.dp
+                                )
 
                                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -285,15 +275,12 @@ fun ListenNowScreen(
                                         .padding(12.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(44.dp)
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .background(Color.DarkGray),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(track.title.take(1), color = Color.White, fontWeight = FontWeight.Bold)
-                                    }
+                                    TrackArtworkImage(
+                                        track = track,
+                                        modifier = Modifier.size(44.dp),
+                                        shape = RoundedCornerShape(8.dp),
+                                        iconSize = 20.dp
+                                    )
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(

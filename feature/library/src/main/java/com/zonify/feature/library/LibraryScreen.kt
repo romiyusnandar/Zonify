@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.sp
 import com.zonify.core.database.entity.PlaylistEntity
 import com.zonify.core.model.Track
 import com.zonify.core.ui.components.AudiophileBadge
+import com.zonify.core.ui.components.TrackArtworkImage
 import com.zonify.core.ui.theme.AppleMusicCardDark
 import com.zonify.core.ui.theme.AppleMusicDarkBackground
 import com.zonify.core.ui.theme.AppleMusicDivider
@@ -229,7 +230,7 @@ private fun MainLibraryGrid(
         modifier = modifier
             .fillMaxSize()
             .background(AppleMusicDarkBackground),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -306,25 +307,14 @@ private fun MainLibraryGrid(
                     .fillMaxWidth()
                     .clickable { onTrackClick(track) }
             ) {
-                Card(
+                TrackArtworkImage(
+                    track = track,
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(1f),
                     shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = AppleMusicCardDark)
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = track.title.take(1),
-                            color = Color.White.copy(alpha = 0.5f),
-                            fontSize = 36.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
+                    iconSize = 36.dp
+                )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -375,24 +365,37 @@ private fun AlbumsView(
 
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
+            contentPadding = PaddingValues(bottom = 100.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(albums) { (albumName, albumTracks) ->
+                val firstTrack = albumTracks.firstOrNull()
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onAlbumClick(albumName, albumTracks) }
                 ) {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = AppleMusicCardDark)
-                    ) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(albumName.take(1), color = Color.White, fontSize = 42.sp, fontWeight = FontWeight.Bold)
+                    if (firstTrack != null) {
+                        TrackArtworkImage(
+                            track = firstTrack,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            iconSize = 40.dp
+                        )
+                    } else {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = AppleMusicCardDark)
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text(albumName.take(1), color = Color.White, fontSize = 42.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
@@ -423,8 +426,12 @@ private fun ArtistsView(
     ) {
         CategoryHeader(title = "Artists", onBack = onBack)
 
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(bottom = 100.dp)
+        ) {
             items(artists) { (artistName, artistTracks) ->
+                val firstTrack = artistTracks.firstOrNull()
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -432,14 +439,23 @@ private fun ArtistsView(
                         .padding(vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(52.dp)
-                            .clip(CircleShape)
-                            .background(AppleMusicCardDark),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(artistName.take(1), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+                    if (firstTrack != null) {
+                        TrackArtworkImage(
+                            track = firstTrack,
+                            modifier = Modifier.size(52.dp),
+                            shape = CircleShape,
+                            iconSize = 22.dp
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(52.dp)
+                                .clip(CircleShape)
+                                .background(AppleMusicCardDark),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(artistName.take(1), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+                        }
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                     Column(modifier = Modifier.weight(1f)) {
@@ -469,7 +485,10 @@ private fun SongsView(
     ) {
         CategoryHeader(title = title, onBack = onBack)
 
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(bottom = 100.dp)
+        ) {
             items(tracks) { track ->
                 Row(
                     modifier = Modifier
@@ -479,15 +498,12 @@ private fun SongsView(
                         .padding(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(46.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(AppleMusicCardDark),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(track.title.take(1), color = Color.White, fontWeight = FontWeight.Bold)
-                    }
+                    TrackArtworkImage(
+                        track = track,
+                        modifier = Modifier.size(46.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        iconSize = 20.dp
+                    )
                     Spacer(modifier = Modifier.width(14.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(track.title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -521,7 +537,10 @@ private fun FoldersView(
     ) {
         CategoryHeader(title = "Lossless Folders", onBack = onBack)
 
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(bottom = 100.dp)
+        ) {
             items(folders) { (folderName, folderTracks) ->
                 Row(
                     modifier = Modifier
@@ -566,7 +585,10 @@ private fun PlaylistsView(
             }
         )
 
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(bottom = 100.dp)
+        ) {
             // Default Favorites Playlist
             item {
                 Row(

@@ -1,8 +1,10 @@
 package com.zonify.feature.player
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -47,23 +50,25 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zonify.core.model.LyricLine
 import com.zonify.core.model.Track
+import com.zonify.core.model.TrackLyric
 import com.zonify.core.ui.components.AppleMusicBlurBackground
 import com.zonify.core.ui.components.AudiophileBadge
+import com.zonify.core.ui.components.TrackArtworkImage
 import com.zonify.core.ui.theme.AppleMusicPink
 import com.zonify.core.ui.theme.AppleMusicRed
 import com.zonify.core.ui.theme.AppleMusicTextSecondary
 import com.zonify.core.ui.theme.BitPerfectCyan
-
-import androidx.compose.animation.Crossfade
-import com.zonify.core.model.LyricLine
-import com.zonify.core.model.TrackLyric
 import com.zonify.feature.player.lyrics.LrcParser
 import com.zonify.feature.player.lyrics.LyricsView
+import kotlin.math.roundToInt
 
 @Composable
 fun PlayerScreen(
@@ -85,16 +90,23 @@ fun PlayerScreen(
     var isDraggingSlider by remember { mutableStateOf(false) }
     var sliderPosition by remember { mutableFloatStateOf(0f) }
 
+    var dragOffsetY by remember { mutableFloatStateOf(0f) }
+    val animatedOffsetY by animateFloatAsState(
+        targetValue = dragOffsetY,
+        animationSpec = spring(dampingRatio = 0.8f, stiffness = 400f),
+        label = "DragOffset"
+    )
+
     val effectivePosition = if (isDraggingSlider) sliderPosition.toLong() else currentPositionMs
     val effectiveDuration = if (durationMs > 0) durationMs else currentTrack.durationMs.coerceAtLeast(1L)
 
-    // Load local LRC file or generate sample synced lyrics
-    val trackLyrics = remember(currentTrack.id) {
+    // Load local LRC file or show demo synced lyrics ONLY for Hotel California demo track
+    val trackLyrics = remember(currentTrack.id, currentTrack.title) {
         val localLrc = LrcParser.findLocalLrcFile(currentTrack.uri.path)
         if (localLrc != null) {
             LrcParser.parse(localLrc, currentTrack.id)
-        } else {
-            // High-quality sample synced lyrics demo
+        } else if (currentTrack.title.contains("Hotel California", ignoreCase = true)) {
+            // High-quality sample synced lyrics demo ONLY for demo song
             TrackLyric(
                 trackId = currentTrack.id,
                 isSynced = true,
@@ -116,6 +128,8 @@ fun PlayerScreen(
                     LyricLine(81000L, "Such a lovely face")
                 )
             )
+        } else {
+            null
         }
     }
 
@@ -134,12 +148,51 @@ fun PlayerScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .offset { IntOffset(0, animatedOffsetY.roundToInt().coerceAtLeast(0)) }
+                .pointerInput(showLyrics) {
+                    // Swiping down anywhere on player sheet dismisses it when not browsing lyrics
+                    if (!showLyrics) {
+                        detectVerticalDragGestures(
+                            onVerticalDrag = { change, dragAmount ->
+                                if (dragAmount > 0 || dragOffsetY > 0) {
+                                    dragOffsetY = (dragOffsetY + dragAmount).coerceAtLeast(0f)
+                                    change.consume()
+                                }
+                            },
+                            onDragEnd = {
+                                if (dragOffsetY > 130f) {
+                                    onDismiss()
+                                }
+                                dragOffsetY = 0f
+                            },
+                            onDragCancel = { dragOffsetY = 0f }
+                        )
+                    }
+                }
                 .padding(horizontal = 24.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Top Bar (Dismiss handle / menu)
+            // Top Bar (Dismiss handle / menu) with dedicated swipe down detection
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures(
+                            onVerticalDrag = { change, dragAmount ->
+                                if (dragAmount > 0 || dragOffsetY > 0) {
+                                    dragOffsetY = (dragOffsetY + dragAmount).coerceAtLeast(0f)
+                                    change.consume()
+                                }
+                            },
+                            onDragEnd = {
+                                if (dragOffsetY > 100f) {
+                                    onDismiss()
+                                }
+                                dragOffsetY = 0f
+                            },
+                            onDragCancel = { dragOffsetY = 0f }
+                        )
+                    },
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -152,12 +205,12 @@ fun PlayerScreen(
                     )
                 }
 
-                // Top drag grabber
+                // Apple Music Grabber indicator bar
                 Box(
                     modifier = Modifier
-                        .size(width = 36.dp, height = 4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(Color.White.copy(alpha = 0.3f))
+                        .size(width = 40.dp, height = 5.dp)
+                        .clip(RoundedCornerShape(2.5.dp))
+                        .background(Color.White.copy(alpha = 0.4f))
                 )
 
                 IconButton(onClick = { /* More actions */ }) {
@@ -200,17 +253,12 @@ fun PlayerScreen(
                                 shape = RoundedCornerShape(20.dp),
                                 colors = CardDefaults.cardColors(containerColor = Color.DarkGray)
                             ) {
-                                Box(
+                                TrackArtworkImage(
+                                    track = currentTrack,
                                     modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = currentTrack.title.take(1),
-                                        color = Color.White.copy(alpha = 0.4f),
-                                        fontSize = 72.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
+                                    shape = RoundedCornerShape(20.dp),
+                                    iconSize = 64.dp
+                                )
                             }
                         }
                     }

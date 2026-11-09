@@ -74,20 +74,13 @@ fun MiniPlayer(
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Artwork thumbnail placeholder
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color.DarkGray),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = currentTrack.title.take(1),
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                // Artwork thumbnail with real embedded/MediaStore art
+                TrackArtworkImage(
+                    track = currentTrack,
+                    modifier = Modifier.size(44.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    iconSize = 20.dp
+                )
 
                 Spacer(modifier = Modifier.width(12.dp))
 
