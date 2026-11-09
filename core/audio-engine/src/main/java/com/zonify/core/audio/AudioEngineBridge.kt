@@ -18,6 +18,9 @@ object AudioEngineBridge {
     private val _isBitPerfectActive = MutableStateFlow(false)
     val isBitPerfectActive: StateFlow<Boolean> = _isBitPerfectActive.asStateFlow()
 
+    private val _isEqualizerActive = MutableStateFlow(false)
+    val isEqualizerActive: StateFlow<Boolean> = _isEqualizerActive.asStateFlow()
+
     private val _sampleRate = MutableStateFlow(44100)
     val sampleRate: StateFlow<Int> = _sampleRate.asStateFlow()
 
@@ -38,6 +41,7 @@ object AudioEngineBridge {
     }
 
     fun setEqualizerEnabled(enabled: Boolean) {
+        _isEqualizerActive.value = enabled
         nativeSetEqualizerEnabled(enabled)
     }
 

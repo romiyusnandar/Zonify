@@ -69,7 +69,7 @@ class AudioFileScanner(private val context: Context) {
             MediaStore.Audio.Media.MIME_TYPE
         )
 
-        val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
+        val selection = "(${MediaStore.Audio.Media.IS_MUSIC} != 0 OR ${MediaStore.Audio.Media.MIME_TYPE} LIKE 'audio/%') AND ${MediaStore.Audio.Media.DURATION} >= 1000"
         val sortOrder = "${MediaStore.Audio.Media.TITLE} ASC"
 
         try {
@@ -80,34 +80,40 @@ class AudioFileScanner(private val context: Context) {
                 null,
                 sortOrder
             )?.use { cursor ->
-                val idCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
-                val titleCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
-                val artistCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
-                val albumCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
-                val durationCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
-                val dataCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
-                val albumIdCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
-                val trackCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TRACK)
-                val yearCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.YEAR)
-                val mimeCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.MIME_TYPE)
+                val idCol = cursor.getColumnIndex(MediaStore.Audio.Media._ID)
+                val titleCol = cursor.getColumnIndex(MediaStore.Audio.Media.TITLE)
+                val artistCol = cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST)
+                val albumCol = cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM)
+                val durationCol = cursor.getColumnIndex(MediaStore.Audio.Media.DURATION)
+                val dataCol = cursor.getColumnIndex(MediaStore.Audio.Media.DATA)
+                val albumIdCol = cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ID)
+                val trackCol = cursor.getColumnIndex(MediaStore.Audio.Media.TRACK)
+                val yearCol = cursor.getColumnIndex(MediaStore.Audio.Media.YEAR)
+                val mimeCol = cursor.getColumnIndex(MediaStore.Audio.Media.MIME_TYPE)
 
                 while (cursor.moveToNext()) {
-                    val id = cursor.getLong(idCol)
-                    val title = cursor.getString(titleCol) ?: "Unknown Title"
-                    val artist = cursor.getString(artistCol) ?: "Unknown Artist"
-                    val album = cursor.getString(albumCol) ?: "Unknown Album"
-                    val durationMs = cursor.getLong(durationCol)
-                    val path = cursor.getString(dataCol) ?: ""
-                    val albumId = cursor.getLong(albumIdCol)
-                    val trackNumber = cursor.getInt(trackCol)
-                    val year = cursor.getInt(yearCol).takeIf { it > 0 }
-                    val mimeType = cursor.getString(mimeCol) ?: ""
+                    val id = if (idCol >= 0) cursor.getLong(idCol) else continue
+                    val rawTitle = if (titleCol >= 0) cursor.getString(titleCol) else null
+                    val rawArtist = if (artistCol >= 0) cursor.getString(artistCol) else null
+                    val rawAlbum = if (albumCol >= 0) cursor.getString(albumCol) else null
+                    val durationMs = if (durationCol >= 0) cursor.getLong(durationCol) else 0L
+                    val path = if (dataCol >= 0) cursor.getString(dataCol) ?: "" else ""
+                    val albumId = if (albumIdCol >= 0) cursor.getLong(albumIdCol) else 0L
+                    val trackNumber = if (trackCol >= 0) cursor.getInt(trackCol) else 0
+                    val year = if (yearCol >= 0) cursor.getInt(yearCol).takeIf { it > 0 } else null
+                    val mimeType = if (mimeCol >= 0) cursor.getString(mimeCol) ?: "" else ""
+
+                    val title = if (!rawTitle.isNullOrBlank()) rawTitle else (path.substringAfterLast('/').substringBeforeLast('.').takeIf { it.isNotBlank() } ?: "Unknown Title")
+                    val artist = if (!rawArtist.isNullOrBlank()) rawArtist else "Unknown Artist"
+                    val album = if (!rawAlbum.isNullOrBlank()) rawAlbum else "Unknown Album"
 
                     val contentUri = ContentUris.withAppendedId(collection, id)
-                    val artworkUri = ContentUris.withAppendedId(
-                        Uri.parse("content://media/external/audio/albumart"),
-                        albumId
-                    )
+                    val artworkUri = if (albumId > 0) {
+                        ContentUris.withAppendedId(
+                            Uri.parse("content://media/external/audio/albumart"),
+                            albumId
+                        )
+                    } else null
 
                     val audioFormat = determineAudioFormat(path, mimeType)
 

@@ -20,6 +20,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
+import android.util.Log
+import androidx.media3.common.PlaybackException
+
 /**
  * Singleton client controller managing connection to ZonifyMediaService.
  * Exposes reactive StateFlow for UI and playback actions.
@@ -32,6 +35,7 @@ class MusicPlayerController private constructor(private val context: Context) {
     private var progressJob: Job? = null
 
     private var currentPlaylist: List<Track> = emptyList()
+    private var pendingPlayRequest: Pair<List<Track>, Int>? = null
 
     private val _currentTrack = MutableStateFlow<Track?>(null)
     val currentTrack: StateFlow<Track?> = _currentTrack.asStateFlow()
@@ -73,8 +77,12 @@ class MusicPlayerController private constructor(private val context: Context) {
             try {
                 mediaController = controllerFuture?.get()
                 setupPlayerListener()
+                pendingPlayRequest?.let { (tracks, index) ->
+                    pendingPlayRequest = null
+                    playQueue(tracks, index)
+                }
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e("ZonifyPlayer", "Failed to connect to MediaSession: ${e.message}", e)
             }
         }, MoreExecutors.directExecutor())
     }
@@ -103,15 +111,33 @@ class MusicPlayerController private constructor(private val context: Context) {
                     _currentTrack.value = matched
                 }
             }
+
+            override fun onPlayerError(error: PlaybackException) {
+                Log.e("ZonifyPlayer", "ExoPlayer playback error: ${error.errorCodeName} - ${error.message}", error)
+                _isPlaying.value = false
+            }
         })
     }
 
     fun playQueue(tracks: List<Track>, startIndex: Int = 0) {
         if (tracks.isEmpty()) return
-        currentPlaylist = tracks
-        val controller = mediaController ?: return
 
-        val mediaItems = tracks.map { track ->
+        // Filter playable tracks
+        val playableTracks = tracks.filter { it.uri != android.net.Uri.EMPTY }
+        if (playableTracks.isEmpty()) {
+            Log.w("ZonifyPlayer", "Cannot play track: URI is empty. Please scan real local files.")
+            _currentTrack.value = tracks.getOrNull(startIndex)
+            return
+        }
+
+        currentPlaylist = playableTracks
+        val controller = mediaController
+        if (controller == null) {
+            pendingPlayRequest = Pair(tracks, startIndex)
+            return
+        }
+
+        val mediaItems = playableTracks.map { track ->
             MediaItem.Builder()
                 .setMediaId(track.id.toString())
                 .setUri(track.uri)
@@ -126,10 +152,11 @@ class MusicPlayerController private constructor(private val context: Context) {
                 .build()
         }
 
-        controller.setMediaItems(mediaItems, startIndex, /* startPositionMs = */ 0L)
+        val targetIndex = startIndex.coerceIn(0, mediaItems.size - 1)
+        controller.setMediaItems(mediaItems, targetIndex, /* startPositionMs = */ 0L)
         controller.prepare()
         controller.play()
-        _currentTrack.value = tracks.getOrNull(startIndex)
+        _currentTrack.value = playableTracks.getOrNull(targetIndex)
     }
 
     fun playTrack(track: Track) {

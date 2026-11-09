@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -44,6 +45,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.zonify.core.audio.AudioEngineBridge
 import com.zonify.core.audio.UsbDacManager
+import com.zonify.core.media.DemoAudioGenerator
 import com.zonify.core.media.MusicPlayerController
 import com.zonify.core.model.AudioCodec
 import com.zonify.core.model.AudioFormatInfo
@@ -58,6 +60,7 @@ import com.zonify.core.ui.theme.ZonifyTheme
 import com.zonify.feature.equalizer.EqualizerScreen
 import com.zonify.feature.library.LibraryScreen
 import com.zonify.feature.library.LibraryViewModel
+import com.zonify.feature.library.ListenNowScreen
 import com.zonify.feature.player.PlayerScreen
 
 class MainActivity : ComponentActivity() {
@@ -90,6 +93,7 @@ fun MainAppScreen(
     }
 
     val scannedTracks by libraryViewModel.tracks.collectAsState()
+    val playlists by libraryViewModel.playlists.collectAsState()
     val isScanning by libraryViewModel.isScanning.collectAsState()
 
     val activeTrack by musicController.currentTrack.collectAsState()
@@ -99,11 +103,18 @@ fun MainAppScreen(
     val progress by musicController.progress.collectAsState()
     val isBitPerfect by usbDacManager.isBitPerfectLocked.collectAsState()
 
-    var selectedTab by remember { mutableIntStateOf(1) } // 0: Listen Now, 1: Library, 2: Equalizer
+    var selectedTab by remember { mutableIntStateOf(0) } // 0: Listen Now, 1: Library, 2: Equalizer
     var isPlayerExpanded by remember { mutableStateOf(false) }
 
+    BackHandler(enabled = isPlayerExpanded) {
+        isPlayerExpanded = false
+    }
+
+    // Generates an offline sample preview chord so audio playback and DSP work immediately
+    val samplePreviewUri = remember(context) { DemoAudioGenerator.getOrCreateSampleUri(context) }
+
     // Fallback sample demo tracks when storage is empty
-    val fallbackTracks = remember {
+    val fallbackTracks = remember(samplePreviewUri) {
         listOf(
             Track(
                 id = 1,
@@ -111,7 +122,7 @@ fun MainAppScreen(
                 artist = "Eagles",
                 album = "Hell Freezes Over",
                 durationMs = 432000L,
-                uri = Uri.EMPTY,
+                uri = samplePreviewUri,
                 audioFormat = AudioFormatInfo(
                     codec = AudioCodec.FLAC,
                     sampleRateHz = 192000,
@@ -127,7 +138,7 @@ fun MainAppScreen(
                 artist = "Pink Floyd",
                 album = "The Dark Side of the Moon",
                 durationMs = 425000L,
-                uri = Uri.EMPTY,
+                uri = samplePreviewUri,
                 audioFormat = AudioFormatInfo(
                     codec = AudioCodec.DSD,
                     sampleRateHz = 2822400,
@@ -144,7 +155,7 @@ fun MainAppScreen(
                 artist = "Daft Punk",
                 album = "Random Access Memories",
                 durationMs = 369000L,
-                uri = Uri.EMPTY,
+                uri = samplePreviewUri,
                 audioFormat = AudioFormatInfo(
                     codec = AudioCodec.ALAC,
                     sampleRateHz = 96000,
@@ -171,7 +182,10 @@ fun MainAppScreen(
 
     LaunchedEffect(Unit) {
         val permissionsToRequest = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            arrayOf(Manifest.permission.READ_MEDIA_AUDIO)
+            arrayOf(
+                Manifest.permission.READ_MEDIA_AUDIO,
+                Manifest.permission.POST_NOTIFICATIONS
+            )
         } else {
             arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
         }
@@ -243,11 +257,29 @@ fun MainAppScreen(
                     .padding(paddingValues)
             ) {
                 when (selectedTab) {
-                    0, 1 -> {
+                    0 -> {
+                        ListenNowScreen(
+                            tracks = displayTracks,
+                            onTrackClick = { track ->
+                                val index = displayTracks.indexOf(track).coerceAtLeast(0)
+                                musicController.playQueue(displayTracks, index)
+                            },
+                            onShuffleAllClick = {
+                                if (displayTracks.isNotEmpty()) {
+                                    val shuffled = displayTracks.shuffled()
+                                    musicController.playQueue(shuffled, 0)
+                                }
+                            },
+                            onScanClick = { libraryViewModel.scanMusic() }
+                        )
+                    }
+                    1 -> {
                         LibraryScreen(
                             recentTracks = displayTracks,
+                            playlists = playlists,
                             isScanning = isScanning,
                             onScanClick = { libraryViewModel.scanMusic() },
+                            onCreatePlaylist = { name -> libraryViewModel.createPlaylist(name) },
                             onTrackClick = { track ->
                                 val index = displayTracks.indexOf(track).coerceAtLeast(0)
                                 musicController.playQueue(displayTracks, index)
