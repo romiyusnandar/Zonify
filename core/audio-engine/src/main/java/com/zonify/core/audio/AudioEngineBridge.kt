@@ -56,6 +56,10 @@ object AudioEngineBridge {
         )
     }
 
+    fun processPcmFloat(buffer: java.nio.ByteBuffer, numFrames: Int, channels: Int) {
+        nativeProcessPcmFloat(buffer, numFrames, channels)
+    }
+
     // Native JNI functions
     private external fun nativeInit(sampleRate: Int, channels: Int, bitPerfect: Boolean): Boolean
     private external fun nativeStart()
@@ -72,5 +76,10 @@ object AudioEngineBridge {
         freqHz: Float,
         gainDb: Float,
         q: Float
+    )
+    private external fun nativeProcessPcmFloat(
+        buffer: java.nio.ByteBuffer,
+        numFrames: Int,
+        channels: Int
     )
 }

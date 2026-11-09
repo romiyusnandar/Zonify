@@ -64,6 +64,9 @@ fun PlayerScreen(
     currentTrack: Track,
     isPlaying: Boolean,
     isBitPerfect: Boolean,
+    currentPositionMs: Long = 0L,
+    durationMs: Long = currentTrack.durationMs,
+    onSeekTo: (Long) -> Unit = {},
     onPlayPauseClick: () -> Unit,
     onPreviousClick: () -> Unit,
     onNextClick: () -> Unit,
@@ -72,7 +75,11 @@ fun PlayerScreen(
     modifier: Modifier = Modifier
 ) {
     var showTechDialog by remember { mutableStateOf(false) }
-    var currentPositionMs by remember { mutableFloatStateOf(0f) }
+    var isDraggingSlider by remember { mutableStateOf(false) }
+    var sliderPosition by remember { mutableFloatStateOf(0f) }
+
+    val effectivePosition = if (isDraggingSlider) sliderPosition.toLong() else currentPositionMs
+    val effectiveDuration = if (durationMs > 0) durationMs else currentTrack.durationMs.coerceAtLeast(1L)
 
     // Apple Music scale effect: artwork grows slightly when playing
     val artworkScale by animateFloatAsState(
@@ -196,9 +203,16 @@ fun PlayerScreen(
 
             // Apple Music Fluid Scrubber
             Slider(
-                value = currentPositionMs,
-                onValueChange = { currentPositionMs = it },
-                valueRange = 0f..currentTrack.durationMs.toFloat(),
+                value = effectivePosition.toFloat().coerceIn(0f, effectiveDuration.toFloat()),
+                onValueChange = {
+                    isDraggingSlider = true
+                    sliderPosition = it
+                },
+                onValueChangeFinished = {
+                    isDraggingSlider = false
+                    onSeekTo(sliderPosition.toLong())
+                },
+                valueRange = 0f..effectiveDuration.toFloat(),
                 colors = SliderDefaults.colors(
                     thumbColor = Color.White,
                     activeTrackColor = Color.White,
@@ -213,12 +227,12 @@ fun PlayerScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = formatMs(currentPositionMs.toLong()),
+                    text = formatMs(effectivePosition),
                     fontSize = 12.sp,
                     color = AppleMusicTextSecondary
                 )
                 Text(
-                    text = "-" + formatMs(currentTrack.durationMs - currentPositionMs.toLong()),
+                    text = "-" + formatMs((effectiveDuration - effectivePosition).coerceAtLeast(0L)),
                     fontSize = 12.sp,
                     color = AppleMusicTextSecondary
                 )

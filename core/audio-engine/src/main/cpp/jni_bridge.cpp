@@ -79,4 +79,19 @@ Java_com_zonify_core_audio_AudioEngineBridge_nativeUpdateBand(
     AudioEngine::getInstance().getEqualizer().setBands(singleBand);
 }
 
+JNIEXPORT void JNICALL
+Java_com_zonify_core_audio_AudioEngineBridge_nativeProcessPcmFloat(
+    JNIEnv* env,
+    jobject /*thiz*/,
+    jobject directBuffer,
+    jint numFrames,
+    jint channels
+) {
+    if (!directBuffer) return;
+    auto* floatData = static_cast<float*>(env->GetDirectBufferAddress(directBuffer));
+    if (floatData) {
+        AudioEngine::getInstance().getEqualizer().process(floatData, numFrames, channels);
+    }
+}
+
 } // extern "C"

@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.zonify.core.audio.AudioEngineBridge
+import com.zonify.core.media.MusicPlayerController
 import com.zonify.core.model.AudioCodec
 import com.zonify.core.model.AudioFormatInfo
 import com.zonify.core.model.DsdFormat
@@ -76,13 +77,20 @@ fun MainAppScreen(
     libraryViewModel: LibraryViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val musicController = remember { MusicPlayerController.getInstance(context) }
+
     val scannedTracks by libraryViewModel.tracks.collectAsState()
     val isScanning by libraryViewModel.isScanning.collectAsState()
 
+    val activeTrack by musicController.currentTrack.collectAsState()
+    val isPlaying by musicController.isPlaying.collectAsState()
+    val currentPositionMs by musicController.currentPositionMs.collectAsState()
+    val durationMs by musicController.durationMs.collectAsState()
+    val progress by musicController.progress.collectAsState()
+    val isBitPerfect by AudioEngineBridge.isBitPerfectActive.collectAsState()
+
     var selectedTab by remember { mutableIntStateOf(1) } // 0: Listen Now, 1: Library, 2: Equalizer
     var isPlayerExpanded by remember { mutableStateOf(false) }
-    var isPlaying by remember { mutableStateOf(false) }
-    var isBitPerfect by remember { mutableStateOf(false) }
 
     // Fallback sample demo tracks when storage is empty
     val fallbackTracks = remember {
@@ -139,7 +147,7 @@ fun MainAppScreen(
     }
 
     val displayTracks = if (scannedTracks.isNotEmpty()) scannedTracks else fallbackTracks
-    var currentTrack by remember(displayTracks) { mutableStateOf<Track?>(displayTracks.firstOrNull()) }
+    val currentDisplayTrack = activeTrack ?: displayTracks.firstOrNull()
 
     // Request permissions on launch
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -231,9 +239,8 @@ fun MainAppScreen(
                             isScanning = isScanning,
                             onScanClick = { libraryViewModel.scanMusic() },
                             onTrackClick = { track ->
-                                currentTrack = track
-                                isPlaying = true
-                                AudioEngineBridge.start()
+                                val index = displayTracks.indexOf(track).coerceAtLeast(0)
+                                musicController.playQueue(displayTracks, index)
                             }
                         )
                     }
@@ -245,19 +252,13 @@ fun MainAppScreen(
                 }
 
                 // Floating Mini Player
-                if (currentTrack != null) {
+                if (currentDisplayTrack != null) {
                     MiniPlayer(
-                        currentTrack = currentTrack,
+                        currentTrack = currentDisplayTrack,
                         isPlaying = isPlaying,
-                        progress = 0.35f,
-                        onPlayPauseClick = {
-                            isPlaying = !isPlaying
-                            if (isPlaying) AudioEngineBridge.start() else AudioEngineBridge.pause()
-                        },
-                        onSkipNextClick = {
-                            val nextIndex = (displayTracks.indexOf(currentTrack) + 1) % displayTracks.size
-                            currentTrack = displayTracks[nextIndex]
-                        },
+                        progress = progress,
+                        onPlayPauseClick = { musicController.togglePlayPause() },
+                        onSkipNextClick = { musicController.skipNext() },
                         onClick = { isPlayerExpanded = true },
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
@@ -269,28 +270,22 @@ fun MainAppScreen(
 
         // Animated Full-Screen Player Modal
         AnimatedVisibility(
-            visible = isPlayerExpanded && currentTrack != null,
+            visible = isPlayerExpanded && currentDisplayTrack != null,
             enter = slideInVertically(initialOffsetY = { it }),
             exit = slideOutVertically(targetOffsetY = { it }),
             modifier = Modifier.fillMaxSize()
         ) {
-            currentTrack?.let { track ->
+            currentDisplayTrack?.let { track ->
                 PlayerScreen(
                     currentTrack = track,
                     isPlaying = isPlaying,
                     isBitPerfect = isBitPerfect,
-                    onPlayPauseClick = {
-                        isPlaying = !isPlaying
-                        if (isPlaying) AudioEngineBridge.start() else AudioEngineBridge.pause()
-                    },
-                    onPreviousClick = {
-                        val prevIndex = (displayTracks.indexOf(currentTrack) - 1 + displayTracks.size) % displayTracks.size
-                        currentTrack = displayTracks[prevIndex]
-                    },
-                    onNextClick = {
-                        val nextIndex = (displayTracks.indexOf(currentTrack) + 1) % displayTracks.size
-                        currentTrack = displayTracks[nextIndex]
-                    },
+                    currentPositionMs = currentPositionMs,
+                    durationMs = if (durationMs > 0) durationMs else track.durationMs,
+                    onSeekTo = { posMs -> musicController.seekTo(posMs) },
+                    onPlayPauseClick = { musicController.togglePlayPause() },
+                    onPreviousClick = { musicController.skipPrevious() },
+                    onNextClick = { musicController.skipNext() },
                     onDismiss = { isPlayerExpanded = false },
                     onEqualizerClick = {
                         isPlayerExpanded = false

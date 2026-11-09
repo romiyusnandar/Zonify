@@ -1,16 +1,20 @@
 package com.zonify.core.media
 
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.audio.AudioSink
+import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.zonify.core.audio.AudioEngineBridge
 
 /**
- * AndroidX MediaSessionService integrating audiophile audio engine with Android System Media Controls.
+ * AndroidX MediaSessionService integrating C++ DSP & AudioProcessor with ExoPlayer and system media controls.
  */
 class ZonifyMediaService : MediaSessionService() {
 
@@ -20,18 +24,34 @@ class ZonifyMediaService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
 
-        // Configure ExoPlayer with Hi-Res / Offload audio attributes
+        // Configure audio attributes for music playback
         val audioAttributes = AudioAttributes.Builder()
             .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
             .setUsage(C.USAGE_MEDIA)
             .build()
 
-        player = ExoPlayer.Builder(this)
+        // Configure AudioSink with ZonifyAudioProcessor to intercept decoded PCM float buffers
+        val audioSink = DefaultAudioSink.Builder(applicationContext)
+            .setAudioProcessors(arrayOf(ZonifyAudioProcessor()))
+            .setEnableFloatOutput(true)
+            .build()
+
+        val renderersFactory = object : DefaultRenderersFactory(applicationContext) {
+            override fun buildAudioSink(
+                context: Context,
+                enableFloatOutput: Boolean,
+                enableAudioTrackPlaybackParams: Boolean
+            ): AudioSink {
+                return audioSink
+            }
+        }
+
+        player = ExoPlayer.Builder(applicationContext, renderersFactory)
             .setAudioAttributes(audioAttributes, /* handleAudioFocus = */ true)
             .setHandleAudioBecomingNoisy(true)
             .build()
 
-        // Create MediaSession with PendingIntent back to App UI
+        // Intent to return to MainActivity when user taps notification
         val sessionActivityPendingIntent = packageManager
             ?.getLaunchIntentForPackage(packageName)
             ?.let { sessionIntent ->
