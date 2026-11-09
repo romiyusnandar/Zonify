@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Whitelist privileged permissions for Zonify Music inside Custom ROM /product/priv-app -->
+<permissions>
+    <privapp-permissions package="com.zonify.music">
+        <permission name="android.permission.MODIFY_AUDIO_ROUTING" />
+        <permission name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+        <permission name="android.permission.START_FOREGROUND_SERVICES_FROM_BACKGROUND" />
+    </privapp-permissions>
+</permissions>

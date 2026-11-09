@@ -1,0 +1,23 @@
+// Blueprint for embedding Zonify Music as a Privileged System App in Custom ROMs
+// Path in ROM tree: packages/apps/Zonify/Android.bp or vendor/<rom>/packages/Zonify/Android.bp
+
+android_app_import {
+    name: "ZonifyMusic",
+    apk: "prebuilt/ZonifyMusic.apk",
+    certificate: "platform",
+    dex_preopt: {
+        enabled: true,
+    },
+    privileged: true,
+    product_specific: true, // Installs to /product/priv-app/ZonifyMusic/
+    required: [
+        "privapp-permissions-zonify.xml",
+    ],
+}
+
+prebuilt_etc {
+    name: "privapp-permissions-zonify.xml",
+    sub_dir: "permissions",
+    src: "privapp-permissions-zonify.xml",
+    product_specific: true, // Installs to /product/etc/permissions/privapp-permissions-zonify.xml
+}
