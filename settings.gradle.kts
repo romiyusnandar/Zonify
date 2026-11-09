@@ -24,6 +24,7 @@ rootProject.name = "Zonify"
 
 include(":app")
 include(":core:audio-engine")
+include(":core:database")
 include(":core:model")
 include(":core:media")
 include(":core:ui")

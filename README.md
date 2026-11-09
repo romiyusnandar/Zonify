@@ -15,6 +15,7 @@ Zonify is a free and open-source local music player for Android designed for hig
 - app: Main application module and UI navigation.
 - core/model: Domain data models for tracks, technical audio formats, and equalizer bands.
 - core/audio-engine: C++ native audio engine, biquad filter DSP, and JNI bridge.
+- core/database: Room SQLite persistence for track caching, favorites, and playlists.
 - core/media: AndroidX Media3 background playback service and media notification.
 - core/ui: Theme tokens, components, and widgets.
 - feature/player: Full-screen player and technical stream information.

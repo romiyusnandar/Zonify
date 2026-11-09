@@ -49,6 +49,7 @@ android {
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:audio-engine"))
+    implementation(project(":core:database"))
     implementation(project(":core:media"))
     implementation(project(":core:ui"))
     implementation(project(":feature:player"))
