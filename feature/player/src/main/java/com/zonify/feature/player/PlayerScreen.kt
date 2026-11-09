@@ -59,6 +59,12 @@ import com.zonify.core.ui.theme.AppleMusicRed
 import com.zonify.core.ui.theme.AppleMusicTextSecondary
 import com.zonify.core.ui.theme.BitPerfectCyan
 
+import androidx.compose.animation.Crossfade
+import com.zonify.core.model.LyricLine
+import com.zonify.core.model.TrackLyric
+import com.zonify.feature.player.lyrics.LrcParser
+import com.zonify.feature.player.lyrics.LyricsView
+
 @Composable
 fun PlayerScreen(
     currentTrack: Track,
@@ -75,11 +81,43 @@ fun PlayerScreen(
     modifier: Modifier = Modifier
 ) {
     var showTechDialog by remember { mutableStateOf(false) }
+    var showLyrics by remember { mutableStateOf(false) }
     var isDraggingSlider by remember { mutableStateOf(false) }
     var sliderPosition by remember { mutableFloatStateOf(0f) }
 
     val effectivePosition = if (isDraggingSlider) sliderPosition.toLong() else currentPositionMs
     val effectiveDuration = if (durationMs > 0) durationMs else currentTrack.durationMs.coerceAtLeast(1L)
+
+    // Load local LRC file or generate sample synced lyrics
+    val trackLyrics = remember(currentTrack.id) {
+        val localLrc = LrcParser.findLocalLrcFile(currentTrack.uri.path)
+        if (localLrc != null) {
+            LrcParser.parse(localLrc, currentTrack.id)
+        } else {
+            // High-quality sample synced lyrics demo
+            TrackLyric(
+                trackId = currentTrack.id,
+                isSynced = true,
+                lines = listOf(
+                    LyricLine(0L, "On a dark desert highway, cool wind in my hair"),
+                    LyricLine(7000L, "Warm smell of colitas, rising up through the air"),
+                    LyricLine(14000L, "Up ahead in the distance, I saw a shimmering light"),
+                    LyricLine(21000L, "My head grew heavy and my sight grew dim"),
+                    LyricLine(28000L, "I had to stop for the night"),
+                    LyricLine(35000L, "There she stood in the doorway"),
+                    LyricLine(39000L, "I heard the mission bell"),
+                    LyricLine(42000L, "And I was thinkin' to myself"),
+                    LyricLine(46000L, "'This could be heaven or this could be hell'"),
+                    LyricLine(51000L, "Then she lit up a candle, and she showed me the way"),
+                    LyricLine(58000L, "There were voices down the corridor"),
+                    LyricLine(63000L, "I thought I heard them say..."),
+                    LyricLine(68000L, "Welcome to the Hotel California"),
+                    LyricLine(76000L, "Such a lovely place (Such a lovely place)"),
+                    LyricLine(81000L, "Such a lovely face")
+                )
+            )
+        }
+    }
 
     // Apple Music scale effect: artwork grows slightly when playing
     val artworkScale by animateFloatAsState(
@@ -133,32 +171,48 @@ fun PlayerScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Artwork (Curved, drop shadow, dynamic scale)
+            // Center View: Artwork or Time-Synced Lyrics
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth(0.9f)
-                        .aspectRatio(1f)
-                        .scale(artworkScale)
-                        .shadow(elevation = 28.dp, shape = RoundedCornerShape(20.dp)),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.DarkGray)
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = currentTrack.title.take(1),
-                            color = Color.White.copy(alpha = 0.4f),
-                            fontSize = 72.sp,
-                            fontWeight = FontWeight.Bold
+                Crossfade(targetState = showLyrics, label = "ArtworkLyricsCrossfade") { isLyricsActive ->
+                    if (isLyricsActive) {
+                        LyricsView(
+                            lyrics = trackLyrics,
+                            currentPositionMs = effectivePosition,
+                            onSeekTo = onSeekTo,
+                            modifier = Modifier.fillMaxSize()
                         )
+                    } else {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth(0.9f)
+                                    .aspectRatio(1f)
+                                    .scale(artworkScale)
+                                    .shadow(elevation = 28.dp, shape = RoundedCornerShape(20.dp)),
+                                shape = RoundedCornerShape(20.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color.DarkGray)
+                            ) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = currentTrack.title.take(1),
+                                        color = Color.White.copy(alpha = 0.4f),
+                                        fontSize = 72.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -285,11 +339,16 @@ fun PlayerScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = { /* Lyrics Sheet */ }) {
+                IconButton(
+                    onClick = { showLyrics = !showLyrics },
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (showLyrics) Color.White.copy(alpha = 0.15f) else Color.Transparent)
+                ) {
                     Icon(
                         imageVector = Icons.Default.ChatBubbleOutline,
                         contentDescription = "Lyrics",
-                        tint = Color.White.copy(alpha = 0.8f)
+                        tint = if (showLyrics) AppleMusicPink else Color.White.copy(alpha = 0.8f)
                     )
                 }
 
