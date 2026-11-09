@@ -72,12 +72,23 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+import androidx.compose.runtime.DisposableEffect
+import com.zonify.core.audio.UsbDacManager
+
 @Composable
 fun MainAppScreen(
     libraryViewModel: LibraryViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val musicController = remember { MusicPlayerController.getInstance(context) }
+    val usbDacManager = remember { UsbDacManager.getInstance(context) }
+
+    DisposableEffect(Unit) {
+        usbDacManager.startListening()
+        onDispose {
+            usbDacManager.stopListening()
+        }
+    }
 
     val scannedTracks by libraryViewModel.tracks.collectAsState()
     val isScanning by libraryViewModel.isScanning.collectAsState()
@@ -87,7 +98,7 @@ fun MainAppScreen(
     val currentPositionMs by musicController.currentPositionMs.collectAsState()
     val durationMs by musicController.durationMs.collectAsState()
     val progress by musicController.progress.collectAsState()
-    val isBitPerfect by AudioEngineBridge.isBitPerfectActive.collectAsState()
+    val isBitPerfect by usbDacManager.isBitPerfectLocked.collectAsState()
 
     var selectedTab by remember { mutableIntStateOf(1) } // 0: Listen Now, 1: Library, 2: Equalizer
     var isPlayerExpanded by remember { mutableStateOf(false) }

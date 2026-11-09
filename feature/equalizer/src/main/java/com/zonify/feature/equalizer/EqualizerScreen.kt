@@ -48,14 +48,23 @@ import com.zonify.core.ui.theme.AppleMusicDarkBackground
 import com.zonify.core.ui.theme.AppleMusicPink
 import com.zonify.core.ui.theme.BitPerfectCyan
 
+import androidx.compose.material.icons.filled.Usb
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.platform.LocalContext
+import com.zonify.core.audio.UsbDacManager
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EqualizerScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val usbDacManager = remember { UsbDacManager.getInstance(context) }
+    val connectedDac by usbDacManager.connectedDac.collectAsState()
+    val isBitPerfectLocked by usbDacManager.isBitPerfectLocked.collectAsState()
+
     var isEqEnabled by remember { mutableStateOf(true) }
-    var isBitPerfect by remember { mutableStateOf(false) }
     var preampDb by remember { mutableFloatStateOf(0f) }
 
     // Sample default audiophile parametric bands
@@ -98,6 +107,48 @@ fun EqualizerScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Hardware USB DAC Status Card
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (connectedDac != null) BitPerfectCyan.copy(alpha = 0.12f) else AppleMusicCardDark
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Usb,
+                                contentDescription = null,
+                                tint = if (connectedDac != null) BitPerfectCyan else Color.Gray,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = connectedDac?.displayName ?: "Internal Audio Route",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 16.sp
+                                )
+                                Text(
+                                    text = if (connectedDac != null) {
+                                        "Max: ${(connectedDac?.supportedSampleRates?.maxOrNull() ?: 192000) / 1000.0} kHz • VID: ${connectedDac?.vendorId} PID: ${connectedDac?.productId}"
+                                    } else {
+                                        "No USB DAC connected. Plug in a USB-C DAC for bit-perfect output."
+                                    },
+                                    color = if (connectedDac != null) BitPerfectCyan.copy(alpha = 0.8f) else Color.Gray,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             // Master Switch & Bit-Perfect Mode Card
             item {
                 Card(
@@ -133,7 +184,7 @@ fun EqualizerScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column {
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     "Direct Bit-Perfect Mode",
                                     color = BitPerfectCyan,
@@ -141,16 +192,15 @@ fun EqualizerScreen(
                                     fontSize = 16.sp
                                 )
                                 Text(
-                                    "Bypasses Android mixer directly to USB DAC",
+                                    "Locks Android 14+ mixer directly to DAC without resampling",
                                     color = Color.Gray,
                                     fontSize = 12.sp
                                 )
                             }
                             Switch(
-                                checked = isBitPerfect,
+                                checked = isBitPerfectLocked,
                                 onCheckedChange = {
-                                    isBitPerfect = it
-                                    AudioEngineBridge.setBitPerfect(it)
+                                    usbDacManager.setBitPerfectMode(it)
                                 },
                                 colors = SwitchDefaults.colors(checkedThumbColor = BitPerfectCyan)
                             )
