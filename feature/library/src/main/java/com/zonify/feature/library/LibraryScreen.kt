@@ -49,9 +49,15 @@ import com.zonify.core.ui.theme.AppleMusicPink
 import com.zonify.core.ui.theme.AppleMusicRed
 import com.zonify.core.ui.theme.AppleMusicTextSecondary
 
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.filled.Refresh
+
 @Composable
 fun LibraryScreen(
     recentTracks: List<Track>,
+    isScanning: Boolean = false,
+    onScanClick: () -> Unit = {},
     onTrackClick: (Track) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -64,16 +70,37 @@ fun LibraryScreen(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Large Apple Music Header Title
+        // Large Header Title with Scan / Refresh Button
         item(span = { GridItemSpan(2) }) {
-            Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
                     text = "Library",
                     fontSize = 34.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    modifier = Modifier.padding(bottom = 12.dp)
+                    color = Color.White
                 )
+
+                if (isScanning) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = AppleMusicPink,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    IconButton(onClick = onScanClick) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Scan Media",
+                            tint = AppleMusicPink
+                        )
+                    }
+                }
             }
         }
 

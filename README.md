@@ -1,56 +1,92 @@
-# Zonify Music (Audiophile Edition) 🎵✨
+# Zonify
 
-Aplikasi Pemutar Musik Android dengan estetika visual **Apple Music** dan engine audio kelas **Audiophile** (Bit-Perfect, Parametric EQ, Hi-Res Lossless, DSD Native/DoP), dirancang untuk siap dijadikan aplikasi bawaan (*Privileged System App*) pada Custom ROM (AOSP, LineageOS, crDroid, PixelOS, dll.).
+Zonify is a free and open-source local music player for Android designed for high quality sound reproduction, bit-perfect playback, and native custom ROM integration.
 
----
+## Features
 
-## 🛠️ Tech Stack
+- Local audio playback supporting FLAC, ALAC, WAV, DSD (DSF/DFF), Opus, and MP3.
+- Native C++ audio engine with RBJ Parametric Equalizer and preamp control.
+- Direct bit-perfect playback support for external USB DACs.
+- Media3 MediaSessionService integration for lockscreen, notification controls, and Bluetooth AVRCP.
+- Modern Jetpack Compose user interface with dynamic backdrop gradients and mini player.
 
-* **UI & Framework**: Kotlin + Jetpack Compose (Material 3)
-* **Audio DSP & Engine**: C++20 (NDK) + Google AAudio / Oboe + RBJ Biquad Filter Cascade
-* **System Integration**: AndroidX Media3 (`MediaSessionService`, Notification Controls, Bluetooth AVRCP)
-* **Image Loading & Dynamic Blur**: Coil 3 + AndroidX Palette + Hardware Blur
-* **Target OS**: Android 8.0+ (API 26) hingga Android 15 (API 35)
-* **Custom ROM Build System**: Android Blueprint (`Android.bp`) + Privileged Permission Whitelist
+## Module Structure
 
----
+- app: Main application module and UI navigation.
+- core/model: Domain data models for tracks, technical audio formats, and equalizer bands.
+- core/audio-engine: C++ native audio engine, biquad filter DSP, and JNI bridge.
+- core/media: AndroidX Media3 background playback service and media notification.
+- core/ui: Theme tokens, components, and widgets.
+- feature/player: Full-screen player and technical stream information.
+- feature/library: Local media scanner and library browser.
+- feature/equalizer: Parametric equalizer and bit-perfect DAC controls.
+- customrom: Blueprint and permissions for integration into AOSP / Custom ROM trees.
 
-## 📐 Arsitektur Modular
+## Custom ROM Integration
 
+Zonify can be integrated as a pre-installed privileged system app in AOSP-based Custom ROMs (LineageOS, crDroid, PixelOS, etc.).
+
+### 1. Build Release APK
+
+Run the Gradle build command:
+
+```bash
+./gradlew :app:assembleRelease
 ```
-Zonify/
-├── app/                      # Main Application, Navigation & Lifecycle
-├── core/
-│   ├── model/                # Domain models: Track, AudioFormatInfo, EqualizerProfile
-│   ├── audio-engine/         # Native C++ DSP Engine, Parametric EQ, Bit-perfect JNI Bridge
-│   ├── media/                # Media3 MediaSessionService & System Playback Controller
-│   └── ui/                   # Apple Music Design System, Dynamic Blur, Mini Player
-├── feature/
-│   ├── player/               # Full-screen Apple Music Player, Scrubber, Badges
-│   ├── library/              # 2-column album grid, category navigation, media scanner
-│   └── equalizer/            # Multi-band Parametric EQ, Preamp, AutoEQ presets
-└── customrom/                # Android.bp & privapp-permissions-zonify.xml untuk ROM tree
+
+The APK will be generated at:
+`app/build/outputs/apk/release/app-release.apk`
+
+### 2. Add to ROM Source Tree
+
+Copy the `customrom/` files into your ROM source tree (for example under `packages/apps/Zonify/` or `vendor/<rom>/packages/apps/Zonify/`):
+
+```text
+packages/apps/Zonify/
+├── Android.bp
+├── privapp-permissions-zonify.xml
+└── prebuilt/
+    └── ZonifyMusic.apk
 ```
 
----
+Rename `app-release.apk` to `prebuilt/ZonifyMusic.apk`.
 
-## 🎧 Fitur Audiophile
+### 3. Include in Device Configuration
 
-1. **Direct Bit-Perfect Mode**: Bypass Android AudioFlinger resampling untuk output langsung ke external USB DAC.
-2. **True Parametric Equalizer (PEQ)**: Implementasi biquad filter RBJ (Peaking, Low Shelf, High Shelf, Low Pass, High Pass) di C++ dengan zero-latency buffer rendering.
-3. **Hi-Res Lossless & DSD Support**: Indikator status audio real-time (FLAC, ALAC, WAV, DSD64-512).
-4. **Digital Pre-Amp & Soft Limiter**: Mencegah digital clipping saat boost frekuensi EQ.
+Add the package to your device or product makefile (`device.mk` or `common.mk`):
 
----
+```makefile
+PRODUCT_PACKAGES += \
+    ZonifyMusic
+```
 
-## 🍎 Fitur UI Apple Music
+### 4. Build the ROM
 
-1. **Signature Animated Mesh Gradient / Blur**: Ekstraksi palet warna album artwork secara dinamis dengan efek animasi halus.
-2. **Expanding Mini Player**: Mini player mengambang di atas bottom bar dengan indikator progress tipis, bertransisi mulus ke modal Full Player.
-3. **Hi-Res Audio Badges**: Badge interaktif "Hi-Res Lossless", "Lossless", dan "Bit-Perfect" dengan dialog metadata teknis lengkap saat ditekan.
+Compile the ROM using standard build commands:
 
----
+```bash
+brunch <device_codename>
+```
 
-## 📦 Kompilasi & Integrasi Custom ROM
+The application will be installed into `/product/priv-app/ZonifyMusic/` with its privileged permissions whitelisted.
 
-Lihat panduan lengkap di [`customrom/README.md`](customrom/README.md).
+## Building from Source
+
+### Prerequisites
+
+- Android SDK (API Level 35)
+- Android NDK (Version 26 or higher)
+- CMake 3.22.1 or higher
+- JDK 17 or higher
+
+### Build Commands
+
+```bash
+git clone https://github.com/romiyusnandar/Zonify.git
+cd Zonify
+./gradlew build
+```
+
+## License
+
+This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.

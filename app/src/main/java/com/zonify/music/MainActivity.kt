@@ -1,14 +1,18 @@
 package com.zonify.music
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -23,6 +27,8 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -31,7 +37,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.zonify.core.audio.AudioEngineBridge
 import com.zonify.core.model.AudioCodec
 import com.zonify.core.model.AudioFormatInfo
@@ -45,6 +54,7 @@ import com.zonify.core.ui.theme.AppleMusicTextSecondary
 import com.zonify.core.ui.theme.ZonifyTheme
 import com.zonify.feature.equalizer.EqualizerScreen
 import com.zonify.feature.library.LibraryScreen
+import com.zonify.feature.library.LibraryViewModel
 import com.zonify.feature.player.PlayerScreen
 
 class MainActivity : ComponentActivity() {
@@ -62,14 +72,20 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MainAppScreen() {
+fun MainAppScreen(
+    libraryViewModel: LibraryViewModel = viewModel()
+) {
+    val context = LocalContext.current
+    val scannedTracks by libraryViewModel.tracks.collectAsState()
+    val isScanning by libraryViewModel.isScanning.collectAsState()
+
     var selectedTab by remember { mutableIntStateOf(1) } // 0: Listen Now, 1: Library, 2: Equalizer
     var isPlayerExpanded by remember { mutableStateOf(false) }
     var isPlaying by remember { mutableStateOf(false) }
     var isBitPerfect by remember { mutableStateOf(false) }
 
-    // Audiophile sample demo tracks
-    val sampleTracks = remember {
+    // Fallback sample demo tracks when storage is empty
+    val fallbackTracks = remember {
         listOf(
             Track(
                 id = 1,
@@ -122,7 +138,36 @@ fun MainAppScreen() {
         )
     }
 
-    var currentTrack by remember { mutableStateOf<Track?>(sampleTracks.first()) }
+    val displayTracks = if (scannedTracks.isNotEmpty()) scannedTracks else fallbackTracks
+    var currentTrack by remember(displayTracks) { mutableStateOf<Track?>(displayTracks.firstOrNull()) }
+
+    // Request permissions on launch
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val granted = permissions.values.any { it }
+        if (granted) {
+            libraryViewModel.scanMusic()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        val permissionsToRequest = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            arrayOf(Manifest.permission.READ_MEDIA_AUDIO)
+        } else {
+            arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+        }
+
+        val hasPermission = permissionsToRequest.all {
+            ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+        }
+
+        if (hasPermission) {
+            libraryViewModel.scanMusic()
+        } else {
+            permissionLauncher.launch(permissionsToRequest)
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -182,7 +227,9 @@ fun MainAppScreen() {
                 when (selectedTab) {
                     0, 1 -> {
                         LibraryScreen(
-                            recentTracks = sampleTracks,
+                            recentTracks = displayTracks,
+                            isScanning = isScanning,
+                            onScanClick = { libraryViewModel.scanMusic() },
                             onTrackClick = { track ->
                                 currentTrack = track
                                 isPlaying = true
@@ -197,7 +244,7 @@ fun MainAppScreen() {
                     }
                 }
 
-                // Apple Music Floating Mini Player sitting right above the bottom bar
+                // Floating Mini Player
                 if (currentTrack != null) {
                     MiniPlayer(
                         currentTrack = currentTrack,
@@ -208,8 +255,8 @@ fun MainAppScreen() {
                             if (isPlaying) AudioEngineBridge.start() else AudioEngineBridge.pause()
                         },
                         onSkipNextClick = {
-                            val nextIndex = (sampleTracks.indexOf(currentTrack) + 1) % sampleTracks.size
-                            currentTrack = sampleTracks[nextIndex]
+                            val nextIndex = (displayTracks.indexOf(currentTrack) + 1) % displayTracks.size
+                            currentTrack = displayTracks[nextIndex]
                         },
                         onClick = { isPlayerExpanded = true },
                         modifier = Modifier
@@ -220,7 +267,7 @@ fun MainAppScreen() {
             }
         }
 
-        // Animated Full-Screen Apple Music Player Modal
+        // Animated Full-Screen Player Modal
         AnimatedVisibility(
             visible = isPlayerExpanded && currentTrack != null,
             enter = slideInVertically(initialOffsetY = { it }),
@@ -237,12 +284,12 @@ fun MainAppScreen() {
                         if (isPlaying) AudioEngineBridge.start() else AudioEngineBridge.pause()
                     },
                     onPreviousClick = {
-                        val prevIndex = (sampleTracks.indexOf(currentTrack) - 1 + sampleTracks.size) % sampleTracks.size
-                        currentTrack = sampleTracks[prevIndex]
+                        val prevIndex = (displayTracks.indexOf(currentTrack) - 1 + displayTracks.size) % displayTracks.size
+                        currentTrack = displayTracks[prevIndex]
                     },
                     onNextClick = {
-                        val nextIndex = (sampleTracks.indexOf(currentTrack) + 1) % sampleTracks.size
-                        currentTrack = sampleTracks[nextIndex]
+                        val nextIndex = (displayTracks.indexOf(currentTrack) + 1) % displayTracks.size
+                        currentTrack = displayTracks[nextIndex]
                     },
                     onDismiss = { isPlayerExpanded = false },
                     onEqualizerClick = {

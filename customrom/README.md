@@ -1,53 +1,49 @@
-# Panduan Integrasi Zonify Music ke Custom ROM (AOSP / LineageOS)
+# Custom ROM Integration Guide
 
-Dokumen ini menjelaskan langkah-langkah memasukkan **Zonify Music** sebagai aplikasi pemutar musik bawaan (*pre-installed privileged system app*) ke dalam source tree Custom ROM Anda.
+This guide explains how to include Zonify as a pre-installed privileged system app in an AOSP-based Custom ROM tree.
 
----
+## 1. Build Release APK
 
-### 1. Build APK Release
-Jalankan perintah build Gradle untuk menghasilkan APK:
+Run the Gradle build command:
+
 ```bash
 ./gradlew :app:assembleRelease
 ```
-File APK akan berada di:
+
+The APK will be generated at:
 `app/build/outputs/apk/release/app-release.apk`
 
----
+## 2. Directory Structure in ROM Tree
 
-### 2. Struktur di Source Tree Custom ROM
-Salin folder integrasi ke dalam direktori aplikasi ROM Anda, misalnya:
-`vendor/<nama-rom>/packages/apps/Zonify/` atau `packages/apps/Zonify/`
+Copy the integration files into your ROM tree (e.g. `packages/apps/Zonify/` or `vendor/<rom>/packages/apps/Zonify/`):
 
-Struktur folder:
-```
+```text
 packages/apps/Zonify/
 ├── Android.bp
 ├── privapp-permissions-zonify.xml
 └── prebuilt/
-    └── ZonifyMusic.apk  (Rename dari app-release.apk)
+    └── ZonifyMusic.apk
 ```
 
----
+Copy and rename `app-release.apk` to `prebuilt/ZonifyMusic.apk`.
 
-### 3. Daftarkan Package ke Makefile Device / ROM
-Tambahkan package `ZonifyMusic` ke file konfigurasi produk ROM Anda (misal `device.mk`, `common.mk`, atau `<rom_name>.mk`):
+## 3. Register Package in Device Makefile
+
+Add `ZonifyMusic` to your device or product makefile (such as `device.mk`, `common.mk`, or `<rom_name>.mk`):
 
 ```makefile
-# Include Zonify Audiophile Music Player
 PRODUCT_PACKAGES += \
     ZonifyMusic
 ```
 
----
+## 4. Build Custom ROM
 
-### 4. Build Custom ROM
-Lakukan kompilasi Custom ROM seperti biasa:
+Compile the ROM:
+
 ```bash
-brunch <codename_device>
-# atau
+brunch <device_codename>
+# or
 mka bacon
 ```
 
-Setelah ROM di-flash ke perangkat, Zonify Music akan terinstall secara otomatis di:
-* `/product/priv-app/ZonifyMusic/ZonifyMusic.apk`
-* Permission whitelist di `/product/etc/permissions/privapp-permissions-zonify.xml`
+After flashing, Zonify will be installed in `/product/priv-app/ZonifyMusic/` with permissions granted via `/product/etc/permissions/privapp-permissions-zonify.xml`.
