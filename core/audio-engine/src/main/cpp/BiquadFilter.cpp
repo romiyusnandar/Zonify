@@ -1,5 +1,6 @@
 #include "BiquadFilter.h"
-#include <numbers>
+#include <algorithm>
+#include <cmath>
 
 BiquadFilter::BiquadFilter() 
     : a0(1.0f), a1(0.0f), a2(0.0f), b1(0.0f), b2(0.0f),

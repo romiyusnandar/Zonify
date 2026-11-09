@@ -8,10 +8,11 @@
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
 .DS_Store
-/build
-*/build
+build/
+**/build/
 *.cxx
 .cxx
+**/.cxx/
 *.apk
 *.aab
 captures/
@@ -20,3 +21,4 @@ captures/
 *.jks
 *.keystore
 keystore.properties
+/.android-sdk/

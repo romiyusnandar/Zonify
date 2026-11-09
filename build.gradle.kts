@@ -6,3 +6,11 @@ plugins {
     alias(libs.plugins.kotlin.serialization) apply false
     alias(libs.plugins.ksp) apply false
 }
+
+subprojects {
+    plugins.withId("org.jetbrains.kotlin.android") {
+        configure<org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension> {
+            jvmToolchain(17)
+        }
+    }
+}

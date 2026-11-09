@@ -27,6 +27,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -42,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.zonify.core.audio.AudioEngineBridge
+import com.zonify.core.audio.UsbDacManager
 import com.zonify.core.media.MusicPlayerController
 import com.zonify.core.model.AudioCodec
 import com.zonify.core.model.AudioFormatInfo
@@ -71,9 +73,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
-import androidx.compose.runtime.DisposableEffect
-import com.zonify.core.audio.UsbDacManager
 
 @Composable
 fun MainAppScreen(

@@ -50,7 +50,8 @@ fun LyricsView(
         return
     }
 
-    if (!lyrics.isSynced && !lyrics.plainText.isNullOrBlank()) {
+    val plain = lyrics.plainText
+    if (!lyrics.isSynced && !plain.isNullOrBlank()) {
         // Plain unsynced lyrics display
         Box(
             modifier = modifier
@@ -59,7 +60,7 @@ fun LyricsView(
             contentAlignment = Alignment.TopStart
         ) {
             Text(
-                text = lyrics.plainText,
+                text = plain,
                 fontSize = 20.sp,
                 lineHeight = 32.sp,
                 color = Color.White.copy(alpha = 0.85f),
